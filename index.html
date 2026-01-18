@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smile Detector</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <h1>Smile to Light the Green LED!</h1>
+    <video id="webcam" autoplay playsinline style="width: 400px;"></video>
+    <h2 id="status">Checking...</h2>
+
+    <script>
+        // 1. Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBfg4l53OaR2HYbO5rv2TmKBGnsb-VktK0",
+            databaseURL: "https://smile-dd182-default-rtdb.firebaseio.com"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // 2. Smile Detection Logic
+        const video = document.getElementById('webcam');
+        const statusText = document.getElementById('status');
+
+        const faceMesh = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
+        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+
+        faceMesh.onResults((results) => {
+            if (results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+                // Points 13 and 14 are the upper and lower lip centers
+                const lipDistance = Math.abs(landmarks[13].y - landmarks[14].y);
+                const smileValue = lipDistance > 0.02 ? 1 : 0; // Adjust 0.02 based on testing
+
+                statusText.innerText = smileValue === 1 ? "SMILE DETECTED! 😄" : "No Smile 😐";
+                database.ref('/').update({ smileStatus: smileValue });
+            }
+        });
+
+        // 3. Start Camera
+        navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+            video.srcObject = stream;
+            const camera = new Camera(video, {
+                onFrame: async () => { await faceMesh.send({image: video}); },
+                width: 640, height: 480
+            });
+            camera.start();
+        });
+    </script>
+</body>
+</html>
