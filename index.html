@@ -147,6 +147,17 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // Ensure the path exists in the database immediately so ESP8266 finds it
+        function ensureDatabasePath() {
+            db.ref('ledStatus').once('value', (snapshot) => {
+                if (!snapshot.exists()) {
+                    console.log("Path ledStatus does not exist. Initializing...");
+                    updateFirebase(false); // Default: Red LED ON
+                }
+            });
+        }
+        ensureDatabasePath();
+
         // State variables
         let isSmiling = false;
         let modelsLoaded = false;
